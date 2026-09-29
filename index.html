@@ -13,8 +13,8 @@
 <body>
 <x-dc>
 <helmet>
-<link rel="stylesheet" href="ds/classical-8aab800e-3951-44f1-a507-f8b914eac983/styles.css">
-<script src="ds/classical-8aab800e-3951-44f1-a507-f8b914eac983/_ds_bundle.js"></script>
+<link rel="stylesheet" href="styles/styles.css">
+<script src="styles/design-system.js"></script>
 <link rel="stylesheet" href="fonts/fonts.css">
 <title>The Connection Cup</title>
 <style>
@@ -83,6 +83,7 @@ body { font-variant-numeric: lining-nums; }
 </div>
 </sc-if>
 <sc-if value="{{ unlocked }}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{ updateReady }}" hint-placeholder-val="{{ false }}"><div style="position: sticky; top: 0; z-index: 60; background: #82CEC1; color: #4D3128; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 16px;"><span>An update to the Connection Cup is ready.</span><button class="btn btn-ghost" style="padding: 2px 10px; font-size: 13px; background: #FFFFFF;" onClick="{{ reloadNow }}">Reload</button></div></sc-if>
 <div style="background: #4D3128; border-bottom: 3px solid #82CEC1;">
   <div class="brandbar" style="max-width: 1180px; margin: 0 auto; padding: 14px var(--space-6); display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);">
     <img src="assets/srmf-logo-white.png" alt="SRMF" style="height: 34px; width: auto; display: block;">
@@ -396,6 +397,10 @@ const READ_URL = "https://script.google.com/macros/s/AKfycbxgEwyhRABpaH4TBRD-spU
 const WRITE_URL = "https://hook.us2.make.com/tc7ll3fgb95gehgn2hg01yqfs2m70ydl";
 const POLL_MS = 30000;
 const UNDO_MS = 15 * 60 * 1000;
+// Bump APP_VERSION and version.json together on every update. Open pages check version.json
+// every 5 minutes and whenever they come back into view, and reload themselves when it changes.
+const APP_VERSION = "2026-09-29.1";
+const VERSION_CHECK_MS = 5 * 60 * 1000;
 const ACTS = [
   {id:"mmih",label:"Monday Make It Happen",pts:15,unit:"meeting",face:true,g:0},
   {id:"team",label:"Team Meeting",pts:15,unit:"meeting",face:true,g:0},
@@ -463,8 +468,29 @@ class Component extends DCLogic {
     this.onVis = () => { if (!document.hidden) { this.setState({ now: Date.now() }); this.sync(); } };
     document.addEventListener("visibilitychange", this.onVis);
     window.addEventListener("focus", this.onVis);
+    this.vtimer = setInterval(() => { if (!document.hidden) this.checkVersion(); }, VERSION_CHECK_MS);
+    this.onVisV = () => { if (!document.hidden) this.checkVersion(); };
+    document.addEventListener("visibilitychange", this.onVisV);
   }
-  componentWillUnmount() { clearInterval(this.timer); document.removeEventListener("visibilitychange", this.onVis); window.removeEventListener("focus", this.onVis); }
+  componentWillUnmount() { clearInterval(this.timer); clearInterval(this.vtimer); document.removeEventListener("visibilitychange", this.onVis); document.removeEventListener("visibilitychange", this.onVisV); window.removeEventListener("focus", this.onVis); }
+  async checkVersion() {
+    if (this.vbusy || Date.now() - (this.vlast || 0) < 60000) return;   // at most once a minute
+    this.vbusy = true; this.vlast = Date.now();
+    try {
+      const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
+      if (!r.ok) return;
+      const v = String((await r.json()).version || "");
+      if (!v || v === APP_VERSION) return;
+      // Only try once per new version, so a cached copy can never cause a reload loop.
+      let tried = ""; try { tried = sessionStorage.getItem("connectionCup.reloadedFor") || ""; } catch (e) {}
+      if (tried === v) return;
+      const f = this.state.form;
+      const typing = (f.names && f.names.trim()) || (f.detail && f.detail.trim()) || this.state.gateCode;
+      if (typing) { this.setState({ updateReady: true }); return; }   // don't wipe what someone is typing
+      try { sessionStorage.setItem("connectionCup.reloadedFor", v); } catch (e) {}
+      location.reload();
+    } catch (e) { /* offline or no version file: ignore */ } finally { this.vbusy = false; }
+  }
 
   async fetchEntries(code) {
     const u = this.readUrl();
@@ -595,6 +621,7 @@ class Component extends DCLogic {
       acts: ACTS.filter(a => !a.hidden).map(a => ({ id: a.id, optionLabel: a.label + " — " + (a.custom ? "you choose" : a.pts + " pts") })),
       groups: GROUPS.map((name, gi) => ({ name, items: ACTS.filter(a => a.g === gi && !a.hidden).map(a => ({ label: a.label, ptsLabel: a.custom ? "You choose, 1–50" : a.pts + " per " + a.unit })) })),
       form: f, flash: this.state.flash,
+      updateReady: !!this.state.updateReady, reloadNow: () => { try { sessionStorage.setItem("connectionCup.reloadedFor", "manual"); } catch (e) {} location.reload(); },
       isPerson: !!act.person, notPerson: !act.person && !act.custom, isCustom: !!act.custom, hasScript: !!act.script, script: act.script || "", hasDetail: !!act.detail,
       detailLabel: act.detail ? act.detail[0] : "", detailPlaceholder: act.detail ? act.detail[1] : "",
       nameCount: typed.length, namesHint: typed.length ? typed.length + (typed.length === 1 ? " person" : " people") + " · " + ptsFor(act, typed.length) + " points" : "One entry per person, so we can see who the team is reaching.",
