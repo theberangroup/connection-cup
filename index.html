@@ -399,7 +399,7 @@ const POLL_MS = 30000;
 const UNDO_MS = 15 * 60 * 1000;
 // Bump APP_VERSION and version.json together on every update. Open pages check version.json
 // every 5 minutes and whenever they come back into view, and reload themselves when it changes.
-const APP_VERSION = "2026-09-29.1";
+const APP_VERSION = "2026-09-29.2";
 const VERSION_CHECK_MS = 5 * 60 * 1000;
 const ACTS = [
   {id:"mmih",label:"Monday Make It Happen",pts:15,unit:"meeting",face:true,g:0},
@@ -440,7 +440,7 @@ const PENDING = "connectionCup.pending";      // entries sent but not yet seen i
 const VOIDED = "connectionCup.voided";        // ids undone here but maybe not yet voided in the Sheet
 // Contest clock runs on Eastern time, whatever time zone a phone is set to.
 const START_MS = Date.UTC(2026, 9, 1, 4, 0);   // Oct 1, 2026 12:00am EDT
-const END_MS = Date.UTC(2026, 11, 1, 5, 1);    // Dec 1, 2026 12:01am EST
+const END_MS = Date.UTC(2026, 11, 2, 5, 0);    // logging closes Dec 1, 2026 11:59:59pm EST (midnight into Dec 2)
 const START = new Date(START_MS), END = new Date(END_MS);
 const etDay = ms => { const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "numeric", day: "numeric" }).formatToParts(new Date(ms)).map(x => [x.type, x.value])); return Date.UTC(+p.year, +p.month - 1, +p.day) / 864e5; };
 const daysUntil = (ms, target) => etDay(target) - etDay(ms);   // whole Eastern calendar days
@@ -534,7 +534,7 @@ class Component extends DCLogic {
       else this.setState({ gateBusy: false, gateError: j && j.error === "unauthorized" ? "That passcode didn't work. Check with Kristin or Brittany." : "Something went wrong. Please try again." });
     } catch (e) { this.setState({ gateBusy: false, gateError: "Couldn't connect. Check your internet connection and try again." }); }
   }
-  defaultDate() { const n = Date.now(); const d = n < START_MS ? START_MS : n >= END_MS ? END_MS - 864e5 : n; const p = new Date(etDay(d) * 864e5); return p.getUTCFullYear() + "-" + pad(p.getUTCMonth() + 1) + "-" + pad(p.getUTCDate()); }
+  defaultDate() { const n = Date.now(); const d = n < START_MS ? START_MS : n >= END_MS ? END_MS - 60000 : n; const p = new Date(etDay(d) * 864e5); return p.getUTCFullYear() + "-" + pad(p.getUTCMonth() + 1) + "-" + pad(p.getUTCDate()); }
   demo() {
     let seed = 7; const r = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
     const out = [], F = ["Linda","Tom","Grace","Marcus","Elena","Bob","Priya","Carl","June","Sam"], L = ["Hayes","Ortiz","Nguyen","Walsh","Brooks","Kim","Foster","Reed"];
@@ -568,7 +568,7 @@ class Component extends DCLogic {
     let statusNumber, statusLabel;
     const nowMsC = this.state.now;
     if (nowMsC < START_MS) { const d = daysUntil(nowMsC, START_MS); statusNumber = d; statusLabel = d === 1 ? "day until kickoff" : "days until kickoff"; }
-    else if (nowMsC < END_MS) { const d = Math.max(0, daysUntil(nowMsC, END_MS)); statusNumber = d; statusLabel = d === 1 ? "day left" : "days left"; }
+    else if (nowMsC < END_MS) { const d = Math.max(1, daysUntil(nowMsC, END_MS - 60000) + 1); statusNumber = d; statusLabel = d === 1 ? "day left" : "days left"; }   // Dec 1 itself counts as the last day
     else { statusNumber = "Final"; statusLabel = "standings"; }
     const f = this.state.form, act = byId[f.act];
     const typed = f.names.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
@@ -626,8 +626,8 @@ class Component extends DCLogic {
       detailLabel: act.detail ? act.detail[0] : "", detailPlaceholder: act.detail ? act.detail[1] : "",
       nameCount: typed.length, namesHint: typed.length ? typed.length + (typed.length === 1 ? " person" : " people") + " · " + ptsFor(act, typed.length) + " points" : "One entry per person, so we can see who the team is reaching.",
       qtyLabel: "How many " + (act.unit.endsWith("s") ? act.unit : act.unit + "s"),
-      previewLabel: addPts ? "= " + addPts + " points" : "",
-      cantAdd: !f.who || !qty || !f.date || (act.custom && (!customPts || !f.detail.trim())),
+      previewLabel: this.state.now >= END_MS ? "Logging closed Dec 1 at 11:59pm." : addPts ? "= " + addPts + " points" : "",
+      cantAdd: this.state.now >= END_MS || !f.who || !qty || !f.date || (act.custom && (!customPts || !f.detail.trim())),
       setWho: e => this.set("who", e.target.value), setAct: e => this.set("act", e.target.value),
       setQty: e => this.set("qty", e.target.value), setDate: e => this.set("date", e.target.value),
       setNames: e => this.set("names", e.target.value), setCustomPts: e => this.set("customPts", e.target.value), setCustomFace: e => this.set("customFace", e.target.checked), setDetail: e => this.set("detail", e.target.value),
@@ -635,11 +635,11 @@ class Component extends DCLogic {
       goalCount: allContacts.length.toLocaleString("en-US"),
       goalPct: Math.min(100, allContacts.length / 10) + "%",
       goalLabel: allContacts.length >= 1000 ? "Goal reached. Every name after this is a bonus." : (1000 - allContacts.length).toLocaleString("en-US") + " to go",
-      goalPace: (() => { const n = this.state.now; if (n < START_MS) return "About 17 new people a day, or about 7 each per week across the team."; if (n >= END_MS) return ""; const days = Math.max(1, daysUntil(n, END_MS)); const left = Math.max(0, 1000 - allContacts.length); return left ? "On pace needs about " + Math.ceil(left / days) + " new people a day." : ""; })(),
+      goalPace: (() => { const n = this.state.now; if (n < START_MS) return "About 17 new people a day, or about 7 each per week across the team."; if (n >= END_MS) return ""; const days = Math.max(1, daysUntil(n, END_MS - 60000) + 1); const left = Math.max(0, 1000 - allContacts.length); return left ? "On pace needs about " + Math.ceil(left / days) + " new people a day." : ""; })(),
       query: this.state.query, agentFilter: af,
       setQuery: e => this.setState({ query: e.target.value }), setAgentFilter: e => this.setState({ agentFilter: e.target.value }),
       addEntry: async () => {
-        if (!f.who || !qty || !f.date || (act.custom && (!customPts || !f.detail.trim()))) return;
+        if (Date.now() >= END_MS || !f.who || !qty || !f.date || (act.custom && (!customPts || !f.detail.trim()))) return;
         const ts = Date.now();
         const entry = { id: ts + "-" + Math.random().toString(36).slice(2, 6), who: f.who, act: f.act, qty, contacts: act.person || act.custom ? typed : [], detail: act.detail ? f.detail.trim() : "", date: f.date, ts, pts: addPts, face: !!entryFace(act, { face: f.customFace }) };
         const pending = [...this.state.pending, entry], mineNext = { ...this.state.mine, [entry.id]: ts };
