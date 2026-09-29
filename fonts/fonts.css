@@ -1,0 +1,4 @@
+/* Brand typefaces for The Connection Cup — self-hosted (SIL Open Font License, see OFL-*.txt). */
+@font-face { font-family: "Playfair Display"; font-style: normal; font-weight: 400 900; font-display: swap; src: url("PlayfairDisplay-VariableFont_wght.woff") format("woff"); }
+@font-face { font-family: "Playfair Display"; font-style: italic; font-weight: 400 900; font-display: swap; src: url("PlayfairDisplay-Italic-VariableFont_wght.woff") format("woff"); }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("Manrope-VariableFont_wght.woff") format("woff"); }
