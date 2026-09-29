@@ -4,6 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Live team standings for The Beran Group’s Connection Cup, October 1 – December 1, 2026.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The Beran Group">
+<meta property="og:title" content="The Connection Cup">
+<meta property="og:description" content="Team standings, live all season long. October 1 – December 1, 2026.">
+<meta property="og:url" content="https://connection-cup.berangrouphomes.com/">
+<meta property="og:image" content="https://connection-cup.berangrouphomes.com/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="The Connection Cup · October 1 – December 1, 2026 · The Beran Group">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://connection-cup.berangrouphomes.com/og-image.png">
 <meta name="theme-color" content="#4D3128">
 <meta name="apple-mobile-web-app-title" content="Connection Cup">
 <link rel="apple-touch-icon" href="assets/tbg-logo.png">
@@ -182,16 +195,16 @@ body { font-variant-numeric: lining-nums; }
         <h2 style="margin: 0; font-family: var(--font-heading); font-weight: 600; font-size: 28px;">Log a connection</h2>
         <div class="field">
           <label>Your name</label>
-          <select class="input" value="{{ form.who }}" onChange="{{ setWho }}">
+          <sc-raw-select class="input" value="{{ form.who }}" onChange="{{ setWho }}">
             <option value="">Choose your name</option>
             <sc-for list="{{ names }}" as="n" hint-placeholder-count="0"><option value="{{ n }}">{{ n }}</option></sc-for>
-          </select>
+          </sc-raw-select>
         </div>
         <div class="field">
           <label>Activity</label>
-          <select class="input" value="{{ form.act }}" onChange="{{ setAct }}">
+          <sc-raw-select class="input" value="{{ form.act }}" onChange="{{ setAct }}">
             <sc-for list="{{ acts }}" as="a" hint-placeholder-count="0"><option value="{{ a.id }}">{{ a.optionLabel }}</option></sc-for>
-          </select>
+          </sc-raw-select>
         </div>
         <sc-if value="{{ hasScript }}" hint-placeholder-val="{{ false }}">
           <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-left: 2px solid var(--color-accent); background: var(--color-accent-100);">
@@ -347,10 +360,10 @@ body { font-variant-numeric: lining-nums; }
       </div>
       <div class="filters" style="display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center;">
         <input class="input" type="search" placeholder="Search a name" value="{{ query }}" onChange="{{ setQuery }}" style="width: 220px;">
-        <select class="input" value="{{ agentFilter }}" onChange="{{ setAgentFilter }}" style="width: 200px;">
+        <sc-raw-select class="input" value="{{ agentFilter }}" onChange="{{ setAgentFilter }}" style="width: 200px;">
           <option value="">Everyone on the team</option>
           <sc-for list="{{ names }}" as="n" hint-placeholder-count="0"><option value="{{ n }}">{{ n }}</option></sc-for>
-        </select>
+        </sc-raw-select>
       </div>
     </div>
     <sc-raw-table class="table d-only" style="width: 100%;">
@@ -399,7 +412,7 @@ const POLL_MS = 30000;
 const UNDO_MS = 15 * 60 * 1000;
 // Bump APP_VERSION and version.json together on every update. Open pages check version.json
 // every 5 minutes and whenever they come back into view, and reload themselves when it changes.
-const APP_VERSION = "2026-09-29.2";
+const APP_VERSION = "2026-09-29.4";
 const VERSION_CHECK_MS = 5 * 60 * 1000;
 const ACTS = [
   {id:"mmih",label:"Monday Make It Happen",pts:15,unit:"meeting",face:true,g:0},
