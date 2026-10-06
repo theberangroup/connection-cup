@@ -402,7 +402,7 @@ body { font-variant-numeric: lining-nums; }
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;demoData&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
-const NAMES = ["Sherry Beran","Jackie Ingram","Meg Price","Tondra Devarel","Patsy Rogers","Ashley Abplanalp","Mair Downing","Cindy Jez","Heather Placer Mull","Ryder Mull","Daniel Gharavi","John Fleming","Brittany McKenney","Patrick Rogers","Jamie Beran"];
+const NAMES = ["Sherry Beran","Jackie Ingram","Meg Price","Tondra Devarel","Patsy Rogers","Ashley Abplanalp","Mair Downing","Heather Placer Mull","Ryder Mull","Daniel Gharavi","John Fleming","Brittany McKenney","Patrick Rogers","Jamie Beran"];
 const HOST = "Kristin Krupp";
 // READ_URL: the Google Sheet's Apps Script web app (/exec). Returns the standings data when given the team passcode.
 // WRITE_URL: the Make.com webhook. Adds new entries to the Sheet and ClickUp, and voids undone ones.
@@ -412,7 +412,7 @@ const POLL_MS = 30000;
 const UNDO_MS = 15 * 60 * 1000;
 // Bump APP_VERSION and version.json together on every update. Open pages check version.json
 // every 5 minutes and whenever they come back into view, and reload themselves when it changes.
-const APP_VERSION = "2026-09-29.4";
+const APP_VERSION = "2026-09-29.6";
 const VERSION_CHECK_MS = 5 * 60 * 1000;
 const ACTS = [
   {id:"mmih",label:"Monday Make It Happen",pts:15,unit:"meeting",face:true,g:0},
@@ -454,6 +454,7 @@ const VOIDED = "connectionCup.voided";        // ids undone here but maybe not y
 // Contest clock runs on Eastern time, whatever time zone a phone is set to.
 const START_MS = Date.UTC(2026, 9, 1, 4, 0);   // Oct 1, 2026 12:00am EDT
 const END_MS = Date.UTC(2026, 11, 2, 5, 0);    // logging closes Dec 1, 2026 11:59:59pm EST (midnight into Dec 2)
+const OPEN_MS = START_MS;    // logging opens Oct 1, 2026 12:00am EDT
 const START = new Date(START_MS), END = new Date(END_MS);
 const etDay = ms => { const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "numeric", day: "numeric" }).formatToParts(new Date(ms)).map(x => [x.type, x.value])); return Date.UTC(+p.year, +p.month - 1, +p.day) / 864e5; };
 const daysUntil = (ms, target) => etDay(target) - etDay(ms);   // whole Eastern calendar days
@@ -639,8 +640,8 @@ class Component extends DCLogic {
       detailLabel: act.detail ? act.detail[0] : "", detailPlaceholder: act.detail ? act.detail[1] : "",
       nameCount: typed.length, namesHint: typed.length ? typed.length + (typed.length === 1 ? " person" : " people") + " · " + ptsFor(act, typed.length) + " points" : "One entry per person, so we can see who the team is reaching.",
       qtyLabel: "How many " + (act.unit.endsWith("s") ? act.unit : act.unit + "s"),
-      previewLabel: this.state.now >= END_MS ? "Logging closed Dec 1 at 11:59pm." : addPts ? "= " + addPts + " points" : "",
-      cantAdd: this.state.now >= END_MS || !f.who || !qty || !f.date || (act.custom && (!customPts || !f.detail.trim())),
+      previewLabel: this.state.now < OPEN_MS ? "Logging opens Oct 1 at 12:00am." : this.state.now >= END_MS ? "Logging closed Dec 1 at 11:59pm." : addPts ? "= " + addPts + " points" : "",
+      cantAdd: this.state.now < OPEN_MS || this.state.now >= END_MS || !f.who || !qty || !f.date || (act.custom && (!customPts || !f.detail.trim())),
       setWho: e => this.set("who", e.target.value), setAct: e => this.set("act", e.target.value),
       setQty: e => this.set("qty", e.target.value), setDate: e => this.set("date", e.target.value),
       setNames: e => this.set("names", e.target.value), setCustomPts: e => this.set("customPts", e.target.value), setCustomFace: e => this.set("customFace", e.target.checked), setDetail: e => this.set("detail", e.target.value),
@@ -648,11 +649,11 @@ class Component extends DCLogic {
       goalCount: allContacts.length.toLocaleString("en-US"),
       goalPct: Math.min(100, allContacts.length / 10) + "%",
       goalLabel: allContacts.length >= 1000 ? "Goal reached. Every name after this is a bonus." : (1000 - allContacts.length).toLocaleString("en-US") + " to go",
-      goalPace: (() => { const n = this.state.now; if (n < START_MS) return "About 17 new people a day, or about 7 each per week across the team."; if (n >= END_MS) return ""; const days = Math.max(1, daysUntil(n, END_MS - 60000) + 1); const left = Math.max(0, 1000 - allContacts.length); return left ? "On pace needs about " + Math.ceil(left / days) + " new people a day." : ""; })(),
+      goalPace: (() => { const n = this.state.now; if (n < START_MS) return "About 16 new people a day, or about 8 each per week across the team."; if (n >= END_MS) return ""; const days = Math.max(1, daysUntil(n, END_MS - 60000) + 1); const left = Math.max(0, 1000 - allContacts.length); return left ? "On pace needs about " + Math.ceil(left / days) + " new people a day." : ""; })(),
       query: this.state.query, agentFilter: af,
       setQuery: e => this.setState({ query: e.target.value }), setAgentFilter: e => this.setState({ agentFilter: e.target.value }),
       addEntry: async () => {
-        if (Date.now() >= END_MS || !f.who || !qty || !f.date || (act.custom && (!customPts || !f.detail.trim()))) return;
+        if (Date.now() < OPEN_MS || Date.now() >= END_MS || !f.who || !qty || !f.date || (act.custom && (!customPts || !f.detail.trim()))) return;
         const ts = Date.now();
         const entry = { id: ts + "-" + Math.random().toString(36).slice(2, 6), who: f.who, act: f.act, qty, contacts: act.person || act.custom ? typed : [], detail: act.detail ? f.detail.trim() : "", date: f.date, ts, pts: addPts, face: !!entryFace(act, { face: f.customFace }) };
         const pending = [...this.state.pending, entry], mineNext = { ...this.state.mine, [entry.id]: ts };
